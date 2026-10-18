@@ -30,8 +30,8 @@ GitHub Desktop'ta: Clone repository → Current branch → kendi görev branch'i
 2. Derleme ve görev kontrollerini çalıştır, donanımda yapılamayan testi açıkça yaz.
 3. Değişiklikleri gözden geçirip commit ve push yap.
 4. GitHub'da Pull requests → New pull request; base=main, compare=kendi branch'in.
-5. PR şablonunu doldur; başka ekip üyesi inceleyince birleştir.
+5. PR açıklamasına değişiklik, test ve bekleyenleri yaz; başka ekip üyesi inceleyince birleştir.
 6. Diğer görevler yeni main değişikliklerini kendi branch'lerine alır.
 
-Başlangıç yapısının bütün branch'lerde aynı olması, herkesin kendi bölümünü geliştirmesine engel değildir. Branch'ler bağımsız kalıcı ürünler değil, ortak main'e dönecek çalışma alanlarıdır.
+Klasör yapısının bütün branch'lerde aynı olması, herkesin kendi bölümünü geliştirmesine engel değildir. Branch'ler bağımsız kalıcı ürünler değil, ortak main'e dönecek çalışma alanlarıdır.
 

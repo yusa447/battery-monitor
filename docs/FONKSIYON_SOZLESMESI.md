@@ -1,4 +1,6 @@
-# Fonksiyonlar ve modüllerin bağlantısı
+# Oluşturulacak fonksiyonlar ve modüllerin bağlantısı
+
+Aşağıdaki kaynak kod dosyaları henüz oluşturulmadı. İmzalar ekip için tasarım sözleşmesidir; her kişi kendi dosyalarını sıfırdan yazacaktır.
 
 ## Tarayıcı
 
@@ -27,7 +29,7 @@ Ortak DOM kimlikleri: `connection-text`, `battery`, `battery-fill`, `percentage`
 | void handleNetwork() | 2 | HTTP isteklerini işler; ana döngüden sık çağrılır |
 | bool Battery::toJson(...) | 2 | Reading'i buffer'a yazar; alan yetmezse false |
 
-`Battery::toJson(char* out, std::size_t size, const Reading& reading, uint32_t now, float adcMv, float unfilteredV)` imzası BatteryJson.h içinde sabittir. Başarıda buffer null sonlandırılır. Sunucu false sonucunda HTTP 500 verir.
+`Battery::toJson(char* out, std::size_t size, const Reading& reading, uint32_t now, float adcMv, float unfilteredV)` imzası görev 2 tarafından BatteryJson.h içinde tanımlanır. Başarıda buffer null sonlandırılır. Sunucu false sonucunda HTTP 500 verir.
 
 ## Ölçüm çekirdeği
 

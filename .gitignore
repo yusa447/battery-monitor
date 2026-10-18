@@ -1,0 +1,10 @@
+.pio/
+.vscode/
+__pycache__/
+*.pyc
+node_modules/
+build/
+firmware/include/web_assets.h
+firmware/include/secrets.h
+*.log
+

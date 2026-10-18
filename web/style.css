@@ -1,0 +1,7 @@
+/* GÖREV 1: Telefon/PC düzeni, pil animasyonu, düşük pil ve hata görünümü. */
+/* TODO: Dış kaynağa bağımlı olmadan tasarımı tamamla. */
+:root { color-scheme: dark; }
+body { margin: 0; background: #101827; color: #eff6ff; font-family: sans-serif; }
+main { max-width: 850px; margin: auto; padding: 28px; }
+button { padding: 10px 16px; }
+

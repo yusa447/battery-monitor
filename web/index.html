@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pil Takip</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/style.css">
+  <script defer src="/model.js"></script>
+  <script defer src="/ui.js"></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <!-- GÖREV 1: Aynı id'leri koruyarak ekran düzenini ve erişilebilirliği tamamla. -->
+  <main>
+    <h1>Pil Takip</h1>
+    <p>Başlangıç iskeleti - ekran ve iletişim görevleri henüz tamamlanmadı.</p>
+    <p id="connection-text">Bağlantı başlatılmadı</p>
+    <div id="battery" role="progressbar" aria-label="Tahmini doluluk" aria-valuemin="0" aria-valuemax="100">
+      <div id="battery-fill"></div>
+      <span id="percentage">—</span><span id="percent-unit" hidden>%</span>
+    </div>
+    <p>Pil voltajı: <span id="voltage">—</span> V</p>
+    <p>Şarj durumu: <span id="charge-state">Bilinmiyor</span></p>
+    <p>Pil bağlantısı: <span id="presence">Henüz doğrulanmadı</span></p>
+    <p id="updated">Henüz veri alınmadı</p>
+    <p id="notice-text" role="status" aria-live="polite">Görevler tamamlanınca canlı ölçüm gösterilecek.</p>
+    <button id="refresh" type="button">Şimdi yenile</button>
+    <details><summary>Ölçüm ayrıntıları</summary>
+      <p>ADC: <span id="adc">—</span></p>
+      <p>Filtresiz voltaj: <span id="unfiltered">—</span></p>
+      <p>Ölçüm: <span id="sample">—</span></p>
+      <p>Veri durumu: <span id="error">Tamamlanmadı</span></p>
+    </details>
+  </main>
+</body>
+</html>
+

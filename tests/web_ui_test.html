@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <title>Görev 01 · BatteryUI Otomatik Testleri</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 16px; line-height: 1.5; }
+    .pass { color: #15803d; font-weight: 600; }
+    .fail { color: #b91c1c; font-weight: 700; }
+    iframe { width: 360px; height: 640px; border: 1px solid #cbd5e1; }
+  </style>
+</head>
+<body>
+  <h1>BatteryUI Otomatik Doğrulama</h1>
+  <p id="summary">Çalıştırılıyor...</p>
+  <ul id="results"></ul>
+  <iframe id="sandbox" src="../web/index.html" title="Test çerçevesi"></iframe>
+
+  <script>
+    (function () {
+      const REQUIRED_IDS = [
+        "connection-text",
+        "battery",
+        "battery-fill",
+        "percentage",
+        "percent-unit",
+        "voltage",
+        "charge-state",
+        "presence",
+        "updated",
+        "notice-text",
+        "refresh",
+        "adc",
+        "unfiltered",
+        "sample",
+        "error"
+      ];
+
+      const frame = document.getElementById("sandbox");
+      const resultsEl = document.getElementById("results");
+      const summaryEl = document.getElementById("summary");
+
+      function runTests() {
+        let win = null;
+        let doc = null;
+        try {
+          win = frame.contentWindow;
+          doc = frame.contentDocument;
+          if (!win || !doc) {
+            throw new Error("iframe erisimi engellendi");
+          }
+          void doc.documentElement;
+        } catch (err) {
+          summaryEl.textContent = "Test dosyası doğrudan dosya yolundan (file://) açıldığı için tarayıcı iframe erişimini engelledi.";
+          summaryEl.className = "fail";
+          summaryEl.setAttribute("data-status", "BLOCKED");
+          resultsEl.innerHTML =
+            "<li><strong>Neden?</strong> Chrome/Edge güvenlik politikası, <code>file://</code> adreslerinde bir sayfanın başka bir yerel dosyayı (<code>../web/index.html</code>) iframe içinden okumasına izin vermez.</li>" +
+            "<li><strong>Çözüm:</strong> Bu dosyayı VS Code <strong>Live Preview</strong> (veya yerel bir HTTP sunucusu) üzerinden açın; tüm 13 test otomatik olarak çalışır.</li>";
+          return;
+        }
+        const assertions = [];
+
+        function test(name, fn) {
+          try {
+            fn();
+            assertions.push({ name: name, ok: true });
+          } catch (err) {
+            assertions.push({ name: name, ok: false, error: err && err.message ? err.message : String(err) });
+          }
+        }
+
+        function assert(cond, msg) {
+          if (!cond) {
+            throw new Error(msg || "Assertion failed");
+          }
+        }
+
+        function byId(id) {
+          return doc.getElementById(id);
+        }
+
+        test("Sözleşmedeki 15 DOM id'si mevcut", function () {
+          REQUIRED_IDS.forEach(function (id) {
+            assert(byId(id) !== null, "Eksik DOM id: " + id);
+          });
+        });
+
+        test("Script sırası model.js -> ui.js -> app.js ve hepsi defer", function () {
+          const scripts = Array.from(doc.querySelectorAll("script[src]")).filter(function (s) {
+            const src = s.getAttribute("src") || "";
+            return src.indexOf("/__vscode_livepreview_injected_script") !== 0 && src.indexOf("/__") !== 0;
+          });
+          const srcs = scripts.map(function (s) { return s.getAttribute("src"); });
+          assert(
+            srcs.length === 3 && srcs[0] === "model.js" && srcs[1] === "ui.js" && srcs[2] === "app.js",
+            "Beklenen sıra [model.js, ui.js, app.js], bulunan: " + JSON.stringify(srcs)
+          );
+          scripts.forEach(function (s) {
+            assert(s.defer === true, "defer eksik: " + s.getAttribute("src"));
+          });
+        });
+
+        test("Harici CDN veya font bağlantısı yok", function () {
+          const externals = Array.from(doc.querySelectorAll("link[href], script[src]")).filter(function (el) {
+            const url = el.getAttribute("href") || el.getAttribute("src") || "";
+            return /^https?:\/\//i.test(url) || url.indexOf("//") === 0;
+          });
+          assert(externals.length === 0, "Harici kaynak bulundu");
+        });
+
+        test("BatteryUI.render ve BatteryUI.offline tanımlı", function () {
+          assert(win.BatteryUI && typeof win.BatteryUI.render === "function", "BatteryUI.render eksik");
+          assert(typeof win.BatteryUI.offline === "function", "BatteryUI.offline eksik");
+        });
+
+        test("Normal geçerli ölçüm doğru çiziliyor ve yüzde voltajdan yeniden hesaplanmıyor", function () {
+          win.BatteryUI.render({
+            schema_version: 1,
+            voltage: 3.92,
+            percentage: 73,
+            charge_state: "not_charging",
+            battery_present: null,
+            measurement_ok: true,
+            error: "none",
+            sample_id: 14,
+            age_ms: 420,
+            adc_mv: 833.2,
+            unfiltered_voltage: 3.928,
+            estimated: true
+          });
+          assert(byId("percentage").textContent === "73", "percentage !== 73");
+          assert(byId("percent-unit").hidden === false, "percent-unit gizli");
+          assert(byId("voltage").textContent === "3.92 V", "voltage !== 3.92 V");
+          assert(byId("battery-fill").style.width === "73%", "battery-fill width !== 73%");
+          assert(!byId("battery").classList.contains("is-charging"), "not_charging iken animasyon açık");
+          assert(!byId("battery").classList.contains("is-low"), "73% iken düşük pil sınıfı var");
+          assert(byId("presence").textContent.indexOf("Bilinmiyor") !== -1, "battery_present=null iken bilinmiyor yazmalı");
+          assert(byId("adc").textContent === "833.2 mV", "adc formatı hatalı");
+          assert(byId("unfiltered").textContent === "3.928 V", "unfiltered formatı hatalı");
+          assert(byId("sample").textContent === "#14 · 420 ms", "sample formatı hatalı");
+        });
+
+        test("charging durumunda animasyon aktif, yüzde 15 altında düşük pil görünümü ve metni var", function () {
+          win.BatteryUI.render({
+            schema_version: 1,
+            voltage: 3.46,
+            percentage: 12,
+            charge_state: "charging",
+            battery_present: true,
+            measurement_ok: true,
+            error: "none",
+            sample_id: 15,
+            age_ms: 250,
+            adc_mv: 735.0,
+            unfiltered_voltage: 3.465,
+            estimated: true
+          });
+          assert(byId("battery").classList.contains("is-charging"), "charging animasyon sınıfı yok");
+          assert(byId("battery").classList.contains("is-low"), "12% için is-low sınıfı yok");
+          assert(byId("battery-fill").style.width === "12%", "fill 12% değil");
+          assert(byId("charge-state").textContent === "Şarj oluyor", "charge-state yanlış");
+          assert(byId("presence").textContent === "Pil takılı", "presence true yanlış");
+          assert(byId("notice-text").textContent.toLowerCase().indexOf("düşük pil") !== -1, "düşük pil metni yok");
+        });
+
+        test("full durumu yüzdeyi zorla 100 yapmıyor ve şarj animasyonunu kapatıyor", function () {
+          win.BatteryUI.render({
+            schema_version: 1,
+            voltage: 4.14,
+            percentage: 94,
+            charge_state: "full",
+            battery_present: true,
+            measurement_ok: true,
+            error: "none",
+            sample_id: 16,
+            age_ms: 190,
+            adc_mv: 879.5,
+            unfiltered_voltage: 4.142,
+            estimated: true
+          });
+          assert(byId("percentage").textContent === "94", "full yüzdeyi 100 yaptı!");
+          assert(byId("battery-fill").style.width === "94%", "full fill 94% değil");
+          assert(!byId("battery").classList.contains("is-charging"), "full iken animasyon açık");
+          assert(byId("charge-state").textContent === "Dolu", "charge-state Dolu değil");
+        });
+
+        test("measurement_ok=false durumunda sayılar çizgiyle değişir ve %0 yazmaz", function () {
+          win.BatteryUI.render({
+            schema_version: 1,
+            voltage: null,
+            percentage: null,
+            charge_state: "unknown",
+            battery_present: false,
+            measurement_ok: false,
+            error: "no_battery",
+            sample_id: 17,
+            age_ms: 300,
+            adc_mv: null,
+            unfiltered_voltage: null,
+            estimated: true
+          });
+          assert(byId("percentage").textContent === "--", "percentage çizgi değil");
+          assert(byId("percent-unit").hidden === true, "percent-unit gizli değil");
+          assert(byId("voltage").textContent === "--", "voltage çizgi değil");
+          assert(byId("battery").classList.contains("is-invalid"), "is-invalid sınıfı yok");
+          assert(byId("battery").getAttribute("aria-valuenow") === null, "invalid iken aria-valuenow olmamalı");
+          assert(byId("presence").textContent === "Pil yok", "presence Pil yok değil");
+          assert(byId("connection-text").textContent.indexOf("Pil yok") !== -1, "connection-text pil yok durumunu ayırmalı");
+        });
+
+        test("age_ms > 3000 eski veri güncel ölçüm gibi çizilmiyor", function () {
+          win.BatteryUI.render({
+            schema_version: 1,
+            voltage: 4.01,
+            percentage: 82,
+            charge_state: "charging",
+            battery_present: true,
+            measurement_ok: true,
+            error: "none",
+            sample_id: 18,
+            age_ms: 3500,
+            adc_mv: 850.0,
+            unfiltered_voltage: 4.01,
+            estimated: true
+          });
+          assert(byId("percentage").textContent === "--", "stale veri sayı çizdi");
+          assert(byId("voltage").textContent === "--", "stale veri voltaj çizdi");
+          assert(byId("charge-state").textContent === "Bilinmiyor", "stale charge-state Bilinmiyor değil");
+          assert(byId("error").textContent.indexOf("stale") !== -1, "stale hatası gösterilmedi");
+        });
+
+        test("fault durumu şarj arızası olarak ayrılıyor", function () {
+          win.BatteryUI.render({
+            schema_version: 1,
+            voltage: 3.88,
+            percentage: 68,
+            charge_state: "fault",
+            battery_present: true,
+            measurement_ok: true,
+            error: "none",
+            sample_id: 19,
+            age_ms: 150,
+            adc_mv: 824.0,
+            unfiltered_voltage: 3.882,
+            estimated: true
+          });
+          assert(byId("battery").classList.contains("is-fault"), "is-fault sınıfı yok");
+          assert(!byId("battery").classList.contains("is-charging"), "fault iken animasyon olmamalı");
+          assert(byId("charge-state").textContent === "Şarj arızası", "charge-state Şarj arızası değil");
+          assert(byId("connection-text").textContent.indexOf("arıza") !== -1, "connection-text arızayı göstermiyor");
+        });
+
+        test("not_sampled ve invalid_adc durumları doğru ayrılıyor", function () {
+          win.BatteryUI.render({
+            schema_version: 1,
+            voltage: null,
+            percentage: null,
+            charge_state: "unknown",
+            battery_present: null,
+            measurement_ok: false,
+            error: "not_sampled",
+            sample_id: 0,
+            age_ms: 0,
+            adc_mv: null,
+            unfiltered_voltage: null,
+            estimated: true
+          });
+          assert(byId("percentage").textContent === "--", "not_sampled percentage çizgi değil");
+          assert(byId("sample").textContent.indexOf("#0") !== -1, "sample_id=0 metni yanlış");
+          assert(byId("error").textContent.indexOf("not_sampled") !== -1, "not_sampled hatası yok");
+
+          win.BatteryUI.render({
+            schema_version: 1,
+            voltage: null,
+            percentage: null,
+            charge_state: "unknown",
+            battery_present: null,
+            measurement_ok: false,
+            error: "invalid_adc",
+            sample_id: 20,
+            age_ms: 120,
+            adc_mv: null,
+            unfiltered_voltage: null,
+            estimated: true
+          });
+          assert(byId("percentage").textContent === "--", "invalid_adc percentage çizgi değil");
+          assert(byId("connection-text").textContent.indexOf("Ölçüm hatası") !== -1, "connection-text ölçüm hatası değil");
+          assert(byId("error").textContent.indexOf("invalid_adc") !== -1, "invalid_adc hatası yok");
+        });
+
+        test("offline(message) eski voltaj/yüzdeyi gizler, uyarıyı ve son başarılı zamanı gösterir", function () {
+          win.BatteryUI.offline("Sunucuya erişilemedi (zaman aşımı).");
+          assert(byId("percentage").textContent === "--", "offline percentage temizlenmedi");
+          assert(byId("voltage").textContent === "--", "offline voltage temizlenmedi");
+          assert(byId("notice-text").textContent === "Sunucuya erişilemedi (zaman aşımı).", "offline mesajı görünmüyor");
+          assert(byId("updated").textContent.indexOf("Son başarılı veri:") === 0, "son başarılı veri zamanı görünmüyor");
+          assert(byId("battery").classList.contains("is-offline"), "is-offline sınıfı yok");
+          assert(byId("connection-text").textContent.indexOf("Çevrimdışı") !== -1, "connection-text Çevrimdışı değil");
+        });
+
+        test("320px, 390px ve 1280px genişliklerinde yatay taşma yok", function () {
+          [320, 390, 1280].forEach(function (w) {
+            frame.style.width = w + "px";
+            const docEl = doc.documentElement;
+            assert(
+              docEl.scrollWidth <= docEl.clientWidth,
+              w + "px yatay taşma var: scrollWidth=" + docEl.scrollWidth + " > clientWidth=" + docEl.clientWidth
+            );
+          });
+        });
+
+        const failed = assertions.filter(function (a) { return !a.ok; });
+        summaryEl.textContent = (assertions.length - failed.length) + "/" + assertions.length + " test geçti.";
+        summaryEl.className = failed.length === 0 ? "pass" : "fail";
+        summaryEl.setAttribute("data-status", failed.length === 0 ? "PASS" : "FAIL");
+
+        resultsEl.innerHTML = "";
+        assertions.forEach(function (a) {
+          const li = document.createElement("li");
+          li.className = a.ok ? "pass" : "fail";
+          li.textContent = (a.ok ? "PASS: " : "FAIL: ") + a.name + (a.error ? " — " + a.error : "");
+          resultsEl.appendChild(li);
+        });
+      }
+
+      frame.addEventListener("load", runTests);
+    })();
+  </script>
+</body>
+</html>

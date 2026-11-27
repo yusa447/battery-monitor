@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
+  <title>Pil Takip · 4,2 V Li-ion İzleme</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="model.js" defer></script>
+  <script src="ui.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="7" width="17" height="10" rx="2"></rect>
+            <line x1="22" y1="10" x2="22" y2="14"></line>
+            <path d="M11 9.5L8.8 12h3.4L10 14.5"></path>
+          </svg>
+        </span>
+        <div class="brand-text">
+          <h1 class="app-title">Pil Takip</h1>
+          <p class="app-subtitle">Tek hücreli 4,2 V Li-ion · ESP32 / TP4056</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <div class="connection-pill" data-ui="connection-pill" data-tone="neutral" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="connection-text">Bağlanıyor...</span>
+        </div>
+        <button type="button" id="refresh" class="refresh-btn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
+            <polyline points="21 3 21 9 15 9"></polyline>
+          </svg>
+          <span>Şimdi yenile</span>
+        </button>
+      </div>
+    </header>
+
+    <section class="notice-banner" data-ui="notice-banner" data-tone="info" aria-label="Durum ve uyarı bilgisi">
+      <span class="notice-tag" data-ui="notice-tag" aria-hidden="true">Bilgi</span>
+      <p id="notice-text" class="notice-text" role="status" aria-live="polite">
+        Cihazdan ilk ölçüm verisi bekleniyor.
+      </p>
+    </section>
+
+    <main class="dashboard-grid">
+      <section class="card card-primary card-hero" aria-label="Pil doluluk ve voltaj göstergesi">
+        <div class="card-header">
+          <h2 class="card-title">Pil Durumu</h2>
+          <span class="estimate-tag">Tahmini %</span>
+        </div>
+
+        <div
+          id="battery"
+          class="battery-visual is-invalid"
+          role="progressbar"
+          aria-label="Tahmini pil doluluk seviyesi"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuetext="Geçerli ölçüm bekleniyor"
+        >
+          <div class="battery-body">
+            <div id="battery-fill" class="battery-fill" style="width: 0%"></div>
+            <div class="battery-ticks" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div class="battery-overlay" aria-hidden="true">
+              <span class="battery-chip" data-ui="battery-chip">Ölçüm bekleniyor</span>
+            </div>
+          </div>
+          <div class="battery-cap" aria-hidden="true"></div>
+        </div>
+
+        <div class="primary-metrics">
+          <div class="metric-block">
+            <div class="metric-label">Tahmini doluluk</div>
+            <div class="percent-readout">
+              <span id="percentage" class="percent-value">--</span><span id="percent-unit" class="percent-unit unit" hidden>%</span>
+            </div>
+          </div>
+
+          <div class="metric-divider" aria-hidden="true"></div>
+
+          <div class="metric-block">
+            <div class="metric-label">Filtreli pil voltajı</div>
+            <div id="voltage" class="voltage-value">--</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-primary card-status" aria-label="Şarj ve pil özet bilgileri">
+        <div class="card-header">
+          <h2 class="card-title">Durum Özeti</h2>
+        </div>
+
+        <dl class="status-list">
+          <div class="status-row">
+            <dt class="status-term">Şarj durumu</dt>
+            <dd id="charge-state" class="status-badge" data-tone="neutral">Bilinmiyor</dd>
+          </div>
+          <div class="status-row">
+            <dt class="status-term">Pil varlığı</dt>
+            <dd id="presence" class="status-desc" data-tone="neutral">Bilinmiyor</dd>
+          </div>
+          <div class="status-row">
+            <dt class="status-term">Son güncelleme</dt>
+            <dd id="updated" class="status-desc mono">--</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card card-details" aria-label="Ölçüm ve kalibrasyon ayrıntıları">
+        <details class="details-disclosure" open>
+          <summary class="card-header details-summary">
+            <span class="details-summary-left">
+              <svg class="details-chevron" viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 8 10 12 14 8"></polyline>
+              </svg>
+              <span class="card-title">Ölçüm ve Kalibrasyon Ayrıntıları</span>
+            </span>
+            <span class="card-hint">ADC · EMA öncesi · Teşhis</span>
+          </summary>
+
+          <dl class="details-grid">
+            <div class="detail-tile">
+              <dt class="detail-label">ADC ortalaması</dt>
+              <dd id="adc" class="detail-value mono">--</dd>
+            </div>
+            <div class="detail-tile">
+              <dt class="detail-label">Filtresiz voltaj</dt>
+              <dd id="unfiltered" class="detail-value mono">--</dd>
+            </div>
+            <div class="detail-tile">
+              <dt class="detail-label">Örnek / Yaş</dt>
+              <dd id="sample" class="detail-value mono">--</dd>
+            </div>
+            <div class="detail-tile">
+              <dt class="detail-label">Ölçüm hatası</dt>
+              <dd id="error" class="detail-value mono">--</dd>
+            </div>
+          </dl>
+        </details>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <p>Yüzde değeri 4,2 V Li-ion gerilim eğrisinden tahmini olarak hesaplanır; şarj ve pil koruması donanım tarafından yönetilir.</p>
+    </footer>
+  </div>
+</body>
+</html>
